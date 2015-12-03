@@ -45,6 +45,8 @@
 ;; This also fixes the bugs for the regular `ox-texinfo' exporter,
 ;; which is a good thing.
 
+(setq org-texinfo-info-process '("makeinfo --no-split %f"))
+
 ;; When there is no todo item, then TODO is the empty string, not nil.
 ;;
 (defun org-texinfo-format-headline-default-function
