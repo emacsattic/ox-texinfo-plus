@@ -341,8 +341,6 @@ holding contextual information."
 (defun org-texinfo+plain-list (plain-list contents info)
   (concat contents (org-texinfo+maybe-end-list plain-list nil)))
 
-;; Also preserves checkboxes.
-;;
 (defun org-texinfo+item (item contents info)
   (if (let ((case-fold-search nil))
         (string-match org-texinfo+item-regexp contents))
@@ -368,10 +366,6 @@ holding contextual information."
               "\n@item\n"
               (--when-let (org-element-property :tag item)
                 (concat " " (org-export-data it info)))
-              (pcase (org-element-property :checkbox item)
-                (`on    "[X] ")
-                (`off   "[ ] ")
-                (`trans "[-] "))
               contents))))
 
 (defun org-texinfo+face-item (item contents info)
