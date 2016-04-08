@@ -39,71 +39,14 @@
 (require 'dash)
 (require 'ox-texinfo)
 
+
+(setq org-texinfo-info-process '("makeinfo --no-split %f"))
+
 ;;; Patching `ox-texinfo'
 ;;;; Bugfixes
 
 ;; This also fixes the bugs for the regular `ox-texinfo' exporter,
 ;; which is a good thing.
-
-(setq org-texinfo-info-process '("makeinfo --no-split %f"))
-
-;; Make sure there's an empty line before the menu.
-;;
-(defun org-texinfo-make-menu (scope info &optional master)
-  "Create the menu for inclusion in the Texinfo document.
-
-SCOPE is a headline or a full parse tree.  INFO is the
-communication channel, as a plist.
-
-When optional argument MASTER is non-nil, generate a master menu,
-including detailed node listing."
-  (let ((menu (org-texinfo--build-menu scope info)))
-    (when (org-string-nw-p menu)
-      (org-element-normalize-string
-       (format
-	;; -"@menu\n%s@end menu"
-	"\n@menu\n%s@end menu"
-	(concat menu
-		(when master
-		  (let ((detailmenu
-			 (org-texinfo--build-menu
-			  scope info
-			  (let ((toc-depth (plist-get info :with-toc)))
-			    (if (wholenump toc-depth) toc-depth
-			      org-texinfo-max-toc-depth)))))
-		    (when (org-string-nw-p detailmenu)
-		      (concat "\n@detailmenu\n"
-			      "--- The Detailed Node Listing ---\n\n"
-			      detailmenu
-			      "@end detailmenu\n"))))))))))
-
-;; Don't use `org-element-normalize-string'.  This may result in
-;; superfluous whitespace in the texi file in some cases but that
-;; drawback is outweighted by not removing significant whitespace
-;; in other situations.
-;;
-(defun org-texinfo--build-menu (scope info &optional level)
-  "Build menu for entries within SCOPE.
-SCOPE is a headline or a full parse tree.  INFO is a plist
-containing contextual information.  When optional argument LEVEL
-is an integer, build the menu recursively, down to this depth."
-  (cond
-   ((not level)
-    (org-texinfo--format-entries (org-texinfo--menu-entries scope info) info))
-   ((zerop level) nil)
-   (t
-    ;; -(org-element-normalize-string
-    (progn
-     (mapconcat
-      (lambda (h)
-        (let ((entries (org-texinfo--menu-entries h info)))
-          (when entries
-            (concat
-             (format "%s\n\n%s\n"
-                     (org-export-data (org-export-get-alt-title h info) info)
-                     (org-texinfo--format-entries entries info))
-             (org-texinfo--build-menu h info (1- level))))))
-      (org-texinfo--menu-entries scope info) "")))))
 
 ;; If the description part of the link is missing then also omit it in
 ;; the export instead of using the section number.  Just copying the
