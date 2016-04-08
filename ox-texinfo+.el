@@ -39,7 +39,6 @@
 (require 'dash)
 (require 'ox-texinfo)
 
-
 (setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
 ;;; Patching `ox-texinfo'
@@ -132,7 +131,8 @@ INFO is a plist holding contextual information.  See
      ((equal type "info")
       (let* ((info-path (split-string path "[:#]"))
              (info-manual (car info-path))
-             (info-node (or (cadr info-path) "Top")))
+             (info-node (or (cadr info-path) "Top"))
+             (title (or desc "")))
         (if (equal info-manual "gitman")
             (format "
 @ifinfo
@@ -150,7 +150,7 @@ the %s(1) manpage
                     info-node info-manual ; info
                     info-node info-node   ; html
                     info-node)            ; pdf
-        (format "@ref{%s,%s,,%s,}" info-node (or desc "") info-manual))))
+          (format "@ref{%s,%s,,%s,}" info-node title info-manual))))
      ((string= type "mailto")
       (format "@email{%s}"
               (concat (org-texinfo--sanitize-content path)
