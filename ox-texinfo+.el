@@ -47,18 +47,6 @@
 
 (setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
-;; When there is no todo item, then TODO is the empty string, not nil.
-;;
-(defun org-texinfo-format-headline-default-function
-  (todo todo-type priority text tags)
-  "Default format function for a headline.
-See `org-texinfo-format-headline-function' for details."
-  (concat (when (and todo (not (equal todo "")))
-            (format "@strong{%s} " todo))
-          (when priority (format "@emph{#%s} " priority))
-          text
-          (when tags (format " :%s:" (mapconcat 'identity tags ":")))))
-
 ;; Make sure there's an empty line before the menu.
 ;;
 (defun org-texinfo-make-menu (scope info &optional master)
