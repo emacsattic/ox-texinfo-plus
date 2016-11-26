@@ -47,18 +47,6 @@
 ;; This also fixes the bugs for the regular `ox-texinfo' exporter,
 ;; which is a good thing.
 
-;; If the description part of the link is missing then also omit it in
-;; the export instead of using the section number.  Just copying the
-;; section name as description in the org source is not an option
-;; because texinfo is to stupid to realize that the string duplicated
-;; in the texi file will appear only once in the info output and
-;; therefore would justify wrong.
-;;
-;; For links to `gitman', use ifFORMATs to hardcode how they are
-;; exported in the various output formats.  Unfortunately we cannot
-;; do anything about the extra space that texinfo injects before the
-;; period after the link.
-;;
 (defun org-texinfo-link (link desc info)
   "Transcode a LINK object from Org to Texinfo.
 
@@ -133,24 +121,7 @@ INFO is a plist holding contextual information.  See
              (info-manual (car info-path))
              (info-node (or (cadr info-path) "Top"))
              (title (or desc "")))
-        (if (equal info-manual "gitman")
-            (format "
-@ifinfo
-@ref{%s,,,%s,}
-@end ifinfo
-@ifhtml
-@html
-the <a href=\"http://git-scm.com/docs/%s\">%s(1)</a> manpage
-@end html
-@end ifhtml
-@iftex
-the %s(1) manpage
-@end iftex
-"
-                    info-node info-manual ; info
-                    info-node info-node   ; html
-                    info-node)            ; pdf
-          (format "@ref{%s,%s,,%s,}" info-node title info-manual))))
+        (format "@ref{%s,%s,,%s,}" info-node title info-manual)))
      ((string= type "mailto")
       (format "@email{%s}"
               (concat (org-texinfo--sanitize-content path)
