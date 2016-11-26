@@ -1,7 +1,7 @@
 ;;; ox-texinfo+.el --- extended Texinfo Back-End for Org Export Engine
 
 ;; Copyright (C) 2012-2015  Free Software Foundation, Inc.
-;; Copyright (C) 2015  Jonas Bernoulli
+;; Copyright (C) 2015-2016  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Package-Requires: ((dash "2.10.0") (org "8.3"))
@@ -300,7 +300,7 @@ holding contextual information."
 ;;;; Definition items
 
 (defconst org-texinfo+item-regexp
-  (format "\\`%s\\([:(,)]\\) \\(.*\\)\n"
+  (format "\\`%s: \\(.*\\)\n"
           (regexp-opt '("deffn"        ; CATEGORY NAME ARGUMENTS
                         "Command" ; deffn Command NAME ARGUMENTS
                         "defun"   "Function"    ; NAME ARGUMENTS
@@ -371,12 +371,12 @@ holding contextual information."
 (defun org-texinfo+face-item (item contents info)
   (concat (org-texinfo+maybe-begin-list item 'table)
           (format "@item @w{ }--- Face: %s\n%s"
-                  (match-string 3 contents)
+                  (match-string 2 contents)
                   (substring contents (match-end 0)))))
 
 (defun org-texinfo+key-item (item contents info)
   (concat (org-texinfo+maybe-begin-list item 'table)
-          (let ((head (match-string 3 contents))
+          (let ((head (match-string 2 contents))
                 (body (substring contents (match-end 0))))
             (if (string-match ", " head)
                 (let ((key (substring head 0 (match-beginning 0)))
@@ -390,8 +390,7 @@ holding contextual information."
 
 (defun org-texinfo+def-item (item contents info)
   (let ((type (match-string 1 contents))
-        (cont (match-string 2 contents))
-        (head (match-string 3 contents))
+        (head (match-string 2 contents))
         (body (substring contents (match-end 0)))
         (prefix ""))
     (pcase type
@@ -403,12 +402,9 @@ holding contextual information."
       ("Macro"       (setq type "defmac"))
       ("Variable"    (setq type "defvar"))
       ("User Option" (setq type "defopt")))
-    (format "%s%s@%s%s %s\n%s%s"
+    (format "%s%s@%s %s\n%s@end %s\n\n"
             (or (org-texinfo+maybe-end-list item 'single) "")
-            prefix type
-            (if (member cont '("," ")")) "x" "")
-            head body
-            (if (member cont '("," "(")) "" (format "@end %s\n\n" type)))))
+            prefix type head body type)))
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
