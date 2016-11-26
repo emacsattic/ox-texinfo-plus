@@ -1,4 +1,4 @@
-;;; ox-texinfo+.el --- extended Texinfo Back-End for Org Export Engine
+;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End
 
 ;; Copyright (C) 2012-2015  Free Software Foundation, Inc.
 ;; Copyright (C) 2015-2016  Jonas Bernoulli
@@ -25,13 +25,71 @@
 
 ;;; Commentary:
 
-;; This library fixes some bugs in `ox-texinfo' by redefining the
-;; faulty functions.  These fixes should eventually be proposed to
-;; upstream.
+;; This package patches the `texinfo' exporter defined in `ox-texinfo'
+;; to support `@deffn' and similar definition items.  To enable this
+;; add:
+;;
+;;   #+TEXINFO_DEFFN: t
+;;
+;; to your Org file.  Then you can create definition items by writing
+;; something that looks similar to how the corresponding items look in
+;; Info, for example:
+;;
+;;   - Command: magit-section-show
+;;   - Function: magit-git-exit-code &rest args
+;;   - Macro: magit-insert-section &rest args
+;;   - Variable: magit-display-buffer-noselect
+;;   - User Option: magit-display-buffer-function
+;;   - Key: q, magit-mode-bury-buffer
+;;
+;; As you might have guessed this package was written to be used by
+;; Magit's manual.  You might want to check that out.
 
-;; This library also provides an extended exporter `texinfo+' with
-;; adds some additional features needed by the Magit manual.  I won't
-;; document these features/hacks until I am done documenting Magit.
+;; Additionally this package works around `ox-texinfo's misguided
+;; handling of unnumbered vs. numbered sections.  You might have
+;; something like this in your Org file:
+;;
+;;   #+OPTIONS: H:4 num:3 toc:2
+;;
+;; This works as long as you have no level-4 sections.  If you do,
+;; then the use of `num:3' causes an error when exporting the `texi'
+;; file to `info'.  `num' cannot actually be used for its intended
+;; purpose with this exporter, because otherwise it produces invalid
+;; output.  So it is useless, but to add insult to injury, it also
+;; affects how links to sections look, i.e. it makes all links look
+;; like: "Also see [1.2.3]" instead of the much more useful: "Also
+;; see [Title of the section this links to].".
+
+;; To fix this this package defines the `TEXINFO_CLASS' `info+', which
+;; is like `info' but for levels one through three it always uses the
+;; numbered variant, even when `num' calls for the unnumbered variant:
+;;
+;;   * level-1 => `@chapter'
+;;   ** level-2 => `@section'
+;;   *** level-3 => `@subsection'
+;;   **** level-4 => `@unnumberedsubsubsec'
+;;
+;; To enable to use this you need:
+;;
+;;   #+TEXINFO_CLASS: info+
+
+;; It's possible to force a level-4 section to get its own node
+;; by setting its `:texinfo-node' property to `t', for example:
+;;
+;;   **** Risk of Reverting Automatically
+;;   :PROPERTIES:
+;;   :texinfo-node: t
+;;   :END:
+
+;; This package hard-codes which sections get their own node and which
+;; have to share it with their parent.  Sections at levels one through
+;; three get their own node, while those at level four don't.
+
+;; This package does not disable the effect `num' has on how links are
+;; formatted, you have to explicitly set `num' to `nil' if you want to
+;; use descriptive links, for example:
+;;
+;;   #+OPTIONS: H:4 num:nil toc:2
 
 ;;; Code:
 
@@ -41,104 +99,32 @@
 
 (setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
-;;; Patching `ox-texinfo'
-;;;; Bugfixes
+;;; Nodes and Sections
 
-;; This also fixes the bugs for the regular `ox-texinfo' exporter,
-;; which is a good thing.
+(add-to-list 'org-texinfo-classes
+             '("info+"
+               "@documentencoding AUTO\n@documentlanguage AUTO"
+               ("@chapter %s" . "@chapter %s")
+               ("@section %s" . "@section %s")
+               ("@subsection %s" . "@subsection %s")
+               ("@subsubsection %s" . "@unnumberedsubsubsec %s")))
 
-(defun org-texinfo-link (link desc info)
-  "Transcode a LINK object from Org to Texinfo.
+(let* ((exporter (org-export-get-backend 'texinfo))
+       (options (org-export-backend-options exporter)))
+  (unless (assoc :texinfo-deffn options)
+    (setf (org-export-backend-options exporter)
+          (cons (list :texinfo-deffn "TEXINFO_DEFFN" nil nil t)
+                options))))
 
-DESC is the description part of the link, or the empty string.
-INFO is a plist holding contextual information.  See
-`org-export-data'."
-  (let* ((type (org-element-property :type link))
-         (raw-path (org-element-property :path link))
-         ;; Ensure DESC really exists, or set it to nil.
-         (desc (and (not (string= desc "")) desc))
-         (path (cond
-                ((member type '("http" "https" "ftp"))
-                 (concat type ":" raw-path))
-                ((string= type "file") (org-export-file-uri raw-path))
-                (t raw-path))))
-    (cond
-     ((org-export-custom-protocol-maybe link desc 'texinfo))
-     ((org-export-inline-image-p link org-texinfo-inline-image-rules)
-      (org-texinfo--inline-image link info))
-     ((equal type "radio")
-      (let ((destination (org-export-resolve-radio-link link info)))
-        (if (not destination) desc
-          (format "@ref{%s,,%s}"
-                  (org-texinfo--get-node destination info)
-                  desc))))
-     ((member type '("custom-id" "id" "fuzzy"))
-      (let ((destination
-             (if (equal type "fuzzy")
-                 (org-export-resolve-fuzzy-link link info)
-               (org-export-resolve-id-link link info))))
-        (case (org-element-type destination)
-          ((nil)
-           (format org-texinfo-link-with-unknown-path-format
-                   (org-texinfo--sanitize-content path)))
-          ;; Id link points to an external file.
-          (plain-text
-           (if desc (format "@uref{file://%s,%s}" destination desc)
-             (format "@uref{file://%s}" destination)))
-          (headline
-           (format "@ref{%s,%s}"
-                   (org-texinfo--get-node destination info)
-                   (cond
-                    (desc)
-                    ;; -((org-export-numbered-headline-p destination info)
-                    ;; - (mapconcat
-                    ;; -  #'number-to-string
-                    ;; -  (org-export-get-headline-number destination info) "."))
-                    (t (org-export-data
-                        (org-element-property :title destination) info)))))
-          (otherwise
-           (format "@ref{%s,,%s}"
-                   (org-texinfo--get-node destination info)
-                   (cond
-                    (desc)
-                    ;; No description is provided: first try to
-                    ;; associate destination to a number.
-                    ((let ((n (org-export-get-ordinal destination info)))
-                       (cond ((not n) nil)
-                             ((integerp n) n)
-                             (t (mapconcat #'number-to-string n ".")))))
-                    ;; Then grab title of headline containing
-                    ;; DESTINATION.
-                    ((let ((h (org-element-lineage destination '(headline) t)))
-                       (and h
-                            (org-export-data
-                             (org-element-property :title destination) info))))
-                    ;; Eventually, just return "Top" to refer to the
-                    ;; beginning of the info file.
-                    (t "Top")))))))
-     ((equal type "info")
-      (let* ((info-path (split-string path "[:#]"))
-             (info-manual (car info-path))
-             (info-node (or (cadr info-path) "Top"))
-             (title (or desc "")))
-        (format "@ref{%s,%s,,%s,}" info-node title info-manual)))
-     ((string= type "mailto")
-      (format "@email{%s}"
-              (concat (org-texinfo--sanitize-content path)
-                      (and desc (concat "," desc)))))
-     ;; External link with a description part.
-     ((and path desc) (format "@uref{%s,%s}" path desc))
-     ;; External link without a description part.
-     (path (format "@uref{%s}" path))
-     ;; No path, only description.  Try to do something useful.
-     (t
-      (format (plist-get info :texinfo-link-with-unknown-path-format) desc)))))
-
-;;;; NONODE sections
-
-;; To much would have to be redefined to make sure this doesn't affect
-;; the regular `texinfo' exporter.  As long as users don't use the new
-;; `NONODE' property, that exporter behaves as before - so we are good.
+(defun org-texinfo-headline--nonode (fn headline contents info)
+  (let ((string (funcall fn headline contents info)))
+    (if (and (not (equal (org-element-property :TEXINFO-NODE headline) "t"))
+             (> (org-element-property :level headline) 3))
+        (let ((n (string-match-p "\n" string)))
+          (substring string (1+ n)))
+      string)))
+(advice-add 'org-texinfo-headline :around
+            'org-texinfo-headline--nonode)
 
 (defun org-texinfo--menu-entries (scope info)
   "List direct children in SCOPE needing a menu entry.
@@ -150,125 +136,35 @@ holding contextual information."
                                :texinfo-entries-cache)))
          (cached-entries (gethash scope cache 'no-cache)))
     (if (not (eq cached-entries 'no-cache)) cached-entries
-      (puthash scope
-               (org-element-map (org-element-contents scope) 'headline
-                 (lambda (h)
-                   (and (not (org-element-property :NONODE h))
-                        (not (org-not-nil (org-element-property :COPYING h)))
-                        (not (org-element-property :footnote-section-p h))
-                        (not (org-export-low-level-p h info))
-                        h))
-                 info nil 'headline)
-               cache))))
+      (puthash
+       scope
+       (org-element-map (org-element-contents scope) 'headline
+         (lambda (h)
+           (and (or (equal (org-element-property :TEXINFO-NODE h) "t")
+                    (and (not (> (org-element-property :level h) 3))
+                         (not (org-not-nil (org-element-property :COPYING h)))
+                         (not (org-element-property :footnote-section-p h))
+                         (not (org-export-low-level-p h info))))
+                h))
+         info nil 'headline)
+       cache))))
 
-(defun org-texinfo-headline (headline contents info)
-  "Transcode a HEADLINE element from Org to Texinfo.
-CONTENTS holds the contents of the headline.  INFO is a plist
-holding contextual information."
-  (let* ((class (plist-get info :texinfo-class))
-         (level (org-export-get-relative-level headline info))
-         (nonode (org-element-property :NONODE headline))
-         (numberedp (and (not nonode)
-                         (org-export-numbered-headline-p headline info)))
-         (class-sectioning (assoc class (plist-get info :texinfo-classes)))
-         ;; Find the index type, if any.
-         (index (org-element-property :INDEX headline))
-         ;; Create node info, to insert it before section formatting.
-         ;; Use custom menu title if present.
-         (node (and (not nonode)
-                    (format "@node %s\n" (org-texinfo--get-node headline info))))
-         ;; Section formatting will set two placeholders: one for the
-         ;; title and the other for the contents.
-         (section-fmt
-          (if (org-not-nil (org-element-property :APPENDIX headline))
-              "@appendix %s\n%s"
-            (let ((sec (if (and (symbolp (nth 2 class-sectioning))
-                                (fboundp (nth 2 class-sectioning)))
-                           (funcall (nth 2 class-sectioning) level numberedp)
-                         (nth (1+ level) class-sectioning))))
-              (cond
-               ;; No section available for that LEVEL.
-               ((not sec) nil)
-               ;; Section format directly returned by a function.
-               ((stringp sec) sec)
-               ;; (numbered-section . unnumbered-section)
-               ((not (consp (cdr sec)))
-                (concat (if (or index (not numberedp)) (cdr sec) (car sec))
-                        "\n%s"))))))
-         (todo
-          (and (plist-get info :with-todo-keywords)
-               (let ((todo (org-element-property :todo-keyword headline)))
-                 (and todo (org-export-data todo info)))))
-         (todo-type (and todo (org-element-property :todo-type headline)))
-         (tags (and (plist-get info :with-tags)
-                    (org-export-get-tags headline info)))
-         (priority (and (plist-get info :with-priority)
-                        (org-element-property :priority headline)))
-         (text (org-export-data (org-element-property :title headline) info))
-         (full-text (funcall (plist-get info :texinfo-format-headline-function)
-                             todo todo-type priority text tags))
-         (contents (if (org-string-nw-p contents) (concat "\n" contents) "")))
-    (cond
-     ;; Case 1: This is a footnote section: ignore it.
-     ((org-element-property :footnote-section-p headline) nil)
-     ;; Case 2: This is the `copying' section: ignore it
-     ;;         This is used elsewhere.
-     ((org-not-nil (org-element-property :COPYING headline)) nil)
-     ;; Case 3: An index.  If it matches one of the known indexes,
-     ;;         print it as such following the contents, otherwise
-     ;;         print the contents and leave the index up to the user.
-     (index
-      (concat node
-              (format
-               section-fmt
-               full-text
-               (concat contents
-                       (and (member index '("cp" "fn" "ky" "pg" "tp" "vr"))
-                            (concat "\n@printindex " index))))))
-     ;; Case 4: This is a deep sub-tree: export it as a list item.
-     ;;         Also export as items headlines for which no section
-     ;;         format has been found.
-     ((or (not section-fmt) (org-export-low-level-p headline info))
-      ;; Build the real contents of the sub-tree.
-      (concat (and (org-export-first-sibling-p headline info)
-                   (format "@%s\n" (if numberedp 'enumerate 'itemize)))
-              "@item\n" full-text "\n"
-              contents
-              (if (org-export-last-sibling-p headline info)
-                  (format "@end %s" (if numberedp 'enumerate 'itemize))
-                "\n")))
-     ;; Case 5: Standard headline.  Export it as a section.
-     (t (concat node (format section-fmt full-text contents))))))
+;;; Definition Items
 
-;;; Extending `ox-texinfo'
-;;;; Define `texinfo+' exporter
-
-(org-export-define-derived-backend 'texinfo+ 'texinfo
-  :translate-alist '((item . org-texinfo+item)
-                     (plain-list . org-texinfo+plain-list))
-  :menu-entry '(?x "Export to Texinfo+"
-                   ((?t "As TEXI file" org-texinfo+export-to-texinfo)
-                    (?i "As INFO file" org-texinfo+export-to-info))))
-
-(defun org-texinfo+export-to-texinfo
-  (&optional async subtreep visible-only body-only ext-plist)
-  (interactive)
-  (let ((outfile (org-export-output-file-name ".texi" subtreep))
-        (org-export-coding-system org-texinfo-coding-system))
-    (org-export-to-file 'texinfo+ outfile
-      async subtreep visible-only body-only ext-plist)))
-
-(defun org-texinfo+export-to-info
-  (&optional async subtreep visible-only body-only ext-plist)
-  (interactive)
-  (let ((outfile (org-export-output-file-name ".texi" subtreep))
-        (org-export-coding-system org-texinfo-coding-system))
-    (org-export-to-file 'texinfo+ outfile
-      async subtreep visible-only body-only ext-plist
-      (lambda (file) (org-texinfo-compile file)))))
+(defun org-texinfo-plain-list--texinfo+ (fn plain-list contents info)
+  (if (equal (plist-get info :texinfo-deffn) "t")
+      (org-texinfo+plain-list plain-list contents info)
+    (funcall fn plain-list contents info)))
+(advice-add 'org-texinfo-plain-list :around
+            'org-texinfo-plain-list--texinfo+)
 
 
-;;;; Definition items
+(defun org-texinfo-item--texinfo+ (fn item contents info)
+  (if (equal (plist-get info :texinfo-deffn) "t")
+      (org-texinfo+item item contents info)
+    (funcall fn item contents info)))
+(advice-add 'org-texinfo-item :around
+            'org-texinfo-item--texinfo+)
 
 (defconst org-texinfo+item-regexp
   (format "\\`%s: \\(.*\\)\n"
