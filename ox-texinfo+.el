@@ -273,6 +273,22 @@ holding contextual information."
             (or (org-texinfo+maybe-end-list item 'single) "")
             prefix type head body type)))
 
+;;; Advices for `ox.el'.
+
+(defun ox-texinfo+--disable-indent-tabs-mode
+    (fn backend file-or-buffer
+        &optional async subtreep visible-only body-only ext-plist post-process)
+  (let ((saved-indent-tabs-mode (default-value 'indent-tabs-mode)))
+    (when (equal backend 'texinfo)
+      (setq-default indent-tabs-mode nil))
+    (unwind-protect
+        (funcall fn backend file-or-buffer
+                 async subtreep visible-only body-only ext-plist post-process)
+      (setq-default indent-tabs-mode saved-indent-tabs-mode))))
+
+(advice-add 'org-export-to-file   :around 'ox-texinfo+--disable-indent-tabs-mode)
+(advice-add 'org-export-to-buffer :around 'ox-texinfo+--disable-indent-tabs-mode)
+
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
 ;; Local Variables:
