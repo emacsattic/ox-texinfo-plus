@@ -1,7 +1,7 @@
 ;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End
 
 ;; Copyright (C) 2012-2015  Free Software Foundation, Inc.
-;; Copyright (C) 2015-2016  Jonas Bernoulli
+;; Copyright (C) 2015-2017  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Package-Requires: ((dash "2.10.0") (org "8.3"))
@@ -288,6 +288,15 @@ holding contextual information."
 
 (advice-add 'org-export-to-file   :around 'ox-texinfo+--disable-indent-tabs-mode)
 (advice-add 'org-export-to-buffer :around 'ox-texinfo+--disable-indent-tabs-mode)
+
+;;; Redefine `org-texinfo-example-block'.
+
+(defun org-texinfo-example-block (example-block _contents info)
+  "Transcode an EXAMPLE-BLOCK element from Org to Texinfo.
+CONTENTS is nil.  INFO is a plist holding contextual
+information."
+  (format "@example\n%s@end example"
+	  (org-export-format-code-default example-block info)))
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
