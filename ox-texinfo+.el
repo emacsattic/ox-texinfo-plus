@@ -289,15 +289,6 @@ holding contextual information."
 (advice-add 'org-export-to-file   :around 'ox-texinfo+--disable-indent-tabs-mode)
 (advice-add 'org-export-to-buffer :around 'ox-texinfo+--disable-indent-tabs-mode)
 
-;;; Redefine `org-texinfo-example-block'.
-
-(defun org-texinfo-example-block (example-block _contents info)
-  "Transcode an EXAMPLE-BLOCK element from Org to Texinfo.
-CONTENTS is nil.  INFO is a plist holding contextual
-information."
-  (format "@example\n%s@end example"
-	  (org-export-format-code-default example-block info)))
-
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
 ;; Local Variables:
