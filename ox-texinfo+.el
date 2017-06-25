@@ -4,7 +4,7 @@
 ;; Copyright (C) 2015-2017  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
-;; Package-Requires: ((dash "2.10.0") (org "8.3"))
+;; Package-Requires: ((dash "2.10.0") (org "9.1"))
 ;; Homepage: https://github.com/tarsius/ox-texinfo-plus
 ;; Keywords: outlines, hypermedia, calendar, wp
 
