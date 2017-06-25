@@ -101,13 +101,14 @@
 
 ;;; Nodes and Sections
 
-(add-to-list 'org-texinfo-classes
-             '("info+"
-               "@documentencoding AUTO\n@documentlanguage AUTO"
-               ("@chapter %s" . "@chapter %s")
-               ("@section %s" . "@section %s")
-               ("@subsection %s" . "@subsection %s")
-               ("@subsubsection %s" . "@unnumberedsubsubsec %s")))
+(add-to-list
+ 'org-texinfo-classes
+ '("info+"
+   "@documentencoding AUTO\n@documentlanguage AUTO"
+   ("@chapter %s"       "@chapter %s"             "@appendix %s")
+   ("@section %s"       "@section %s"             "@appendixsec %s")
+   ("@subsection %s"    "@subsection %s"          "@appendixsubsec %s")
+   ("@subsubsection %s" "@unnumberedsubsubsec %s" "@appendixsubsubsec %s")))
 
 (let* ((exporter (org-export-get-backend 'texinfo))
        (options (org-export-backend-options exporter)))
