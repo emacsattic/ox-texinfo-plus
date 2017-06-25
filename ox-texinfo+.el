@@ -137,18 +137,33 @@ holding contextual information."
                                :texinfo-entries-cache)))
          (cached-entries (gethash scope cache 'no-cache)))
     (if (not (eq cached-entries 'no-cache)) cached-entries
-      (puthash
-       scope
-       (org-element-map (org-element-contents scope) 'headline
-         (lambda (h)
-           (and (or (equal (org-element-property :TEXINFO-NODE h) "t")
-                    (and (not (> (org-element-property :level h) 3))
-                         (not (org-not-nil (org-element-property :COPYING h)))
-                         (not (org-element-property :footnote-section-p h))
-                         (not (org-export-low-level-p h info))))
-                h))
-         info nil 'headline)
-       cache))))
+      (puthash scope
+               (cl-remove-if
+                (lambda (h)
+                  (if (> (org-element-property :level h) 3)
+                      (not (equal (org-element-property :TEXINFO-NODE h) "t"))
+                    (org-not-nil (org-export-get-node-property :COPYING h t))))
+                (ox-texinfo+--org-export-collect-headlines info nil scope))
+               cache))))
+
+(defun ox-texinfo+--org-export-collect-headlines (info &optional n scope)
+  (let* ((scope (cond ((not scope) (plist-get info :parse-tree))
+                      ((eq (org-element-type scope) 'headline) scope)
+                      ((org-export-get-parent-headline scope))
+                      (t (plist-get info :parse-tree))))
+         (limit (plist-get info :headline-levels))
+         (n (if (not (wholenump n)) limit
+              (min (if (eq (org-element-type scope) 'org-data) n
+                     (+ (org-export-get-relative-level scope info) n))
+                   limit))))
+    (org-element-map (org-element-contents scope) 'headline
+      (lambda (headline)
+        (unless (org-element-property :footnote-section-p headline)
+          (let ((level (org-export-get-relative-level headline info)))
+            (and (<= level n) headline))))
+      info
+      ;; Added for `org-texinfo--menu-entries':
+      nil 'headline)))
 
 ;;; Definition Items
 
