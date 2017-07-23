@@ -87,6 +87,12 @@
 ;;
 ;;   #+OPTIONS: H:4 num:nil toc:2
 
+;; This package also implements a hook that is run before an export,
+;; and a function that can be added to that hook to update version
+;; strings.  This is implemented using the BIND Org keyword:
+;;
+;;   #+BIND: ox-texinfo+-before-export-hook ox-texinfo+-update-version-strings
+
 ;;; Code:
 
 (eval-when-compile (require 'cl))
@@ -110,8 +116,10 @@
        (options (org-export-backend-options exporter)))
   (unless (assoc :texinfo-deffn options)
     (setf (org-export-backend-options exporter)
-          (cons (list :texinfo-deffn "TEXINFO_DEFFN" nil nil t)
-                options))))
+          (append `((:texinfo-deffn "TEXINFO_DEFFN" nil nil t)
+                    (:texinfo-before-export-hook
+                     "TEXINFO_BEFORE_EXPORT_HOOK" nil nil t))
+                  options))))
 
 (defun org-texinfo-headline--nonode (fn headline contents info)
   (let ((string (funcall fn headline contents info)))
@@ -343,6 +351,39 @@ holding contextual information."
 
 (advice-add 'org-export-to-file   :around 'ox-texinfo+--disable-indent-tabs-mode)
 (advice-add 'org-export-to-buffer :around 'ox-texinfo+--disable-indent-tabs-mode)
+
+;;; Before export hook
+
+(defun ox-texinfo+--before-export-hook (&rest _ignored)
+  (let ((hook (-keep (pcase-lambda (`(,var ,val))
+                       (and (eq var 'ox-texinfo+-before-export-hook) val))
+                     (let ((org-export-allow-bind-keywords t))
+                       (org-export--list-bound-variables)))))
+    (run-hooks 'hook)))
+
+(advice-add 'org-texinfo-export-to-info    :before 'ox-texinfo+--before-export-hook)
+(advice-add 'org-texinfo-export-to-texinfo :before 'ox-texinfo+--before-export-hook)
+
+(declare-function magit-git-string 'magit-git)
+(declare-function magit-get-current-tag 'magit-git)
+
+(defun ox-texinfo+-update-version-strings ()
+  "Update version strings in the current buffer.
+How the version strings are located and formatted is hard-coded,
+so you might have to write your own version of this function."
+  (interactive)
+  (require (quote magit))
+  (let ((gitdesc (concat (magit-git-string "describe" "--tags") "+1"))
+        (version (magit-get-current-tag)))
+    (when (string-prefix-p "v" version)
+      (setq version (substring version 1)))
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward "^#\\+SUBTITLE: for version \\(.+\\)" nil t)
+        (replace-match (format "%s (%s)"  version gitdesc) t t nil 1))
+      (when (re-search-forward "^This manual is for [^ ]+ version \\(.+\\)" nil t)
+        (replace-match (format "%s (%s)." version gitdesc) t t nil 1)))
+    (save-buffer)))
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
