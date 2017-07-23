@@ -42,8 +42,8 @@
 ;;   - User Option: magit-display-buffer-function
 ;;   - Key: q, magit-mode-bury-buffer
 ;;
-;; As you might have guessed this package was written to be used by
-;; Magit's manual.  You might want to check that out.
+;; This package was written to be used by Magit's manual.  You might
+;; want to check that out.
 
 ;; Additionally this package works around `ox-texinfo's misguided
 ;; handling of unnumbered vs. numbered sections.  You might have
@@ -80,10 +80,6 @@
 ;;   :PROPERTIES:
 ;;   :texinfo-node: t
 ;;   :END:
-
-;; This package hard-codes which sections get their own node and which
-;; have to share it with their parent.  Sections at levels one through
-;; three get their own node, while those at level four don't.
 
 ;; This package does not disable the effect `num' has on how links are
 ;; formatted, you have to explicitly set `num' to `nil' if you want to
