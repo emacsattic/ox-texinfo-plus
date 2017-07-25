@@ -169,49 +169,6 @@ holding contextual information."
       ;; Added for `org-texinfo--menu-entries':
       nil 'headline)))
 
-(defun org-texinfo-headline (headline contents info)
-  "Transcode a HEADLINE element from Org to Texinfo.
-CONTENTS holds the contents of the headline.  INFO is a plist
-holding contextual information."
-  (let ((section-fmt (org-texinfo--structuring-command headline info)))
-    (when section-fmt
-      (let* ((todo
-              (and (plist-get info :with-todo-keywords)
-                   (let ((todo (org-element-property :todo-keyword headline)))
-                     (and todo (org-export-data todo info)))))
-             (todo-type (and todo (org-element-property :todo-type headline)))
-             (tags (and (plist-get info :with-tags)
-                        (org-export-get-tags headline info)))
-             (priority (and (plist-get info :with-priority)
-                            (org-element-property :priority headline)))
-             (text (org-texinfo--sanitize-title
-                    (org-element-property :title headline) info))
-             (full-text
-              (funcall (plist-get info :texinfo-format-headline-function)
-                       todo todo-type priority text tags))
-             (contents
-              (concat (if (org-string-nw-p contents)
-                          (concat "\n" contents)
-                        "")
-                      (let ((index (org-element-property :INDEX headline)))
-                        (and (member index '("cp" "fn" "ky" "pg" "tp" "vr"))
-                             (format "\n@printindex %s\n" index))))))
-        (cond
-         ((eq section-fmt 'plain-list)
-          (let ((numbered? (org-export-numbered-headline-p headline info)))
-            (concat (and (org-export-first-sibling-p headline info)
-                         (format "@%s\n" (if numbered? 'enumerate 'itemize)))
-                    "@item\n" full-text "\n"
-                    contents
-                    (if (org-export-last-sibling-p headline info)
-                        (format "@end %s" (if numbered? 'enumerate 'itemize))
-                      "\n"))))
-         (t
-          (concat (format "@node %s\n" (org-texinfo--get-node headline info))
-                  (format section-fmt full-text)
-                  "\n" ; I like this newline.
-                  contents)))))))
-
 ;;; Definition Items
 
 (defun org-texinfo-plain-list--texinfo+ (fn plain-list contents info)
