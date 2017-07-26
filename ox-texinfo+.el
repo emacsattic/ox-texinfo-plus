@@ -239,22 +239,6 @@ holding contextual information."
                 (org-export-collect-headlines info 1 scope))
                cache))))
 
-;;; Advices for `ox.el'.
-
-(defun ox-texinfo+--disable-indent-tabs-mode
-    (fn backend file-or-buffer
-        &optional async subtreep visible-only body-only ext-plist post-process)
-  (let ((saved-indent-tabs-mode (default-value 'indent-tabs-mode)))
-    (when (equal backend 'texinfo)
-      (setq-default indent-tabs-mode nil))
-    (unwind-protect
-        (funcall fn backend file-or-buffer
-                 async subtreep visible-only body-only ext-plist post-process)
-      (setq-default indent-tabs-mode saved-indent-tabs-mode))))
-
-(advice-add 'org-export-to-file   :around 'ox-texinfo+--disable-indent-tabs-mode)
-(advice-add 'org-export-to-buffer :around 'ox-texinfo+--disable-indent-tabs-mode)
-
 ;;; Before export hook
 
 (defun ox-texinfo+--before-export-hook (&rest _ignored)
@@ -287,6 +271,14 @@ so you might have to write your own version of this function."
       (when (re-search-forward "^This manual is for [^ ]+ version \\(.+\\)" nil t)
         (replace-match (format "%s (%s)." version gitdesc) t t nil 1)))
     (save-buffer)))
+
+;;; Minor Kludges
+
+(defun org-src-mode--maybe-disable-indent-tabs-mode ()
+  (when (= org-src--tab-width 0)
+    (setq indent-tabs-mode nil)))
+
+(add-hook 'org-src-mode-hook 'org-src-mode--maybe-disable-indent-tabs-mode)
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
