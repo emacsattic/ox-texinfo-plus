@@ -78,7 +78,7 @@
 
 (setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
-;;; Nodes and Sections
+;;; Definition Items
 
 (let* ((exporter (org-export-get-backend 'texinfo))
        (options (org-export-backend-options exporter)))
@@ -86,37 +86,6 @@
     (setf (org-export-backend-options exporter)
           (cons '(:texinfo-deffn "TEXINFO_DEFFN" nil nil t)
                 options))))
-
-(defun org-texinfo-headline--nonode (fn headline contents info)
-  (let ((string (funcall fn headline contents info)))
-    (if (org-not-nil (org-export-get-node-property :NONODE headline t))
-        (let ((n (string-match-p "\n" string)))
-          ;; Remove the "@node HEADING" line again.
-          (substring string (1+ n)))
-      string)))
-(advice-add 'org-texinfo-headline :around
-            'org-texinfo-headline--nonode)
-
-(defun org-texinfo--menu-entries (scope info)
-  "List direct children in SCOPE needing a menu entry.
-SCOPE is a headline or a full parse tree.  INFO is a plist
-holding contextual information."
-  (let* ((cache (or (plist-get info :texinfo-entries-cache)
-                    (plist-get (plist-put info :texinfo-entries-cache
-                                          (make-hash-table :test #'eq))
-                               :texinfo-entries-cache)))
-         (cached-entries (gethash scope cache 'no-cache)))
-    (if (not (eq cached-entries 'no-cache))
-        cached-entries
-      (puthash scope
-               (cl-remove-if
-                (lambda (h)
-                  (or (org-not-nil (org-export-get-node-property :NONODE  h t))
-                      (org-not-nil (org-export-get-node-property :COPYING h t))))
-                (org-export-collect-headlines info 1 scope))
-               cache))))
-
-;;; Definition Items
 
 (defun org-texinfo-plain-list--texinfo+ (fn plain-list contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
@@ -238,6 +207,37 @@ holding contextual information."
     (format "%s%s@%s %s\n%s@end %s\n\n"
             (or (org-texinfo+maybe-end-list item 'single) "")
             prefix type head body type)))
+
+;;; Nodes and Sections
+
+(defun org-texinfo-headline--nonode (fn headline contents info)
+  (let ((string (funcall fn headline contents info)))
+    (if (org-not-nil (org-export-get-node-property :NONODE headline t))
+        (let ((n (string-match-p "\n" string)))
+          ;; Remove the "@node HEADING" line again.
+          (substring string (1+ n)))
+      string)))
+(advice-add 'org-texinfo-headline :around
+            'org-texinfo-headline--nonode)
+
+(defun org-texinfo--menu-entries (scope info)
+  "List direct children in SCOPE needing a menu entry.
+SCOPE is a headline or a full parse tree.  INFO is a plist
+holding contextual information."
+  (let* ((cache (or (plist-get info :texinfo-entries-cache)
+                    (plist-get (plist-put info :texinfo-entries-cache
+                                          (make-hash-table :test #'eq))
+                               :texinfo-entries-cache)))
+         (cached-entries (gethash scope cache 'no-cache)))
+    (if (not (eq cached-entries 'no-cache))
+        cached-entries
+      (puthash scope
+               (cl-remove-if
+                (lambda (h)
+                  (or (org-not-nil (org-export-get-node-property :NONODE  h t))
+                      (org-not-nil (org-export-get-node-property :COPYING h t))))
+                (org-export-collect-headlines info 1 scope))
+               cache))))
 
 ;;; Advices for `ox.el'.
 
