@@ -4,7 +4,7 @@
 ;; Copyright (C) 2015-2017  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
-;; Package-Requires: ((dash "2.10.0") (org "9.1"))
+;; Package-Requires: ((org "9.1"))
 ;; Homepage: https://github.com/tarsius/ox-texinfo-plus
 ;; Keywords: outlines, hypermedia, calendar, wp
 
@@ -82,8 +82,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
-(require 'dash)
+(require 'cl-lib)
 (require 'ox-texinfo)
 
 ;;; Definition Items
@@ -169,13 +168,15 @@
                        ((eq type 'unordered) "itemize")
                        ((member table-type '("ftable" "vtable")) table-type)
                        (t "table"))))
-      (concat (--when-let (org-texinfo+maybe-begin-list
-                           item (if (equal type "table") 'table 'list))
-                (concat (substring it 0 -1)
-                        (and (eq type 'descriptive) (concat " " indic))))
-              "\n@item\n"
-              (--when-let (org-element-property :tag item)
-                (concat " " (org-export-data it info)))
+      (concat (let ((str (org-texinfo+maybe-begin-list
+                          item (if (equal type "table") 'table 'list))))
+                (if str
+                    (concat str (and (eq type 'descriptive)
+                                     (concat " " indic)))
+                  "\n"))
+              "@item\n"
+              (let ((tag (org-element-property :tag item)))
+                (and tag (concat " " (org-export-data tag info))))
               contents))))
 
 (defun org-texinfo+face-item (item contents info)
@@ -250,10 +251,11 @@ holding contextual information."
 ;;; Before Export Hook
 
 (defun ox-texinfo+--before-export-hook (&rest _ignored)
-  (let ((hook (-keep (pcase-lambda (`(,var ,val))
-                       (and (eq var 'ox-texinfo+-before-export-hook) val))
-                     (let ((org-export-allow-bind-keywords t))
-                       (org-export--list-bound-variables)))))
+  (let ((hook (cl-mapcan (pcase-lambda (`(,var ,val))
+                           (and (eq var 'ox-texinfo+-before-export-hook)
+                                (list val)))
+                         (let ((org-export-allow-bind-keywords t))
+                           (org-export--list-bound-variables)))))
     (run-hooks 'hook)))
 
 (advice-add 'org-texinfo-export-to-info    :before 'ox-texinfo+--before-export-hook)
