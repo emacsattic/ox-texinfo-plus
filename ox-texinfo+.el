@@ -208,7 +208,7 @@
             (or (org-texinfo+maybe-end-list item 'single) "")
             prefix type head body type)))
 
-;;; Nodes and Sections
+;;; Shared Nodes
 
 (defun org-texinfo-headline--nonode (fn headline contents info)
   (let ((string (funcall fn headline contents info)))
@@ -239,7 +239,7 @@ holding contextual information."
                 (org-export-collect-headlines info 1 scope))
                cache))))
 
-;;; Before export hook
+;;; Before Export Hook
 
 (defun ox-texinfo+--before-export-hook (&rest _ignored)
   (let ((hook (-keep (pcase-lambda (`(,var ,val))
