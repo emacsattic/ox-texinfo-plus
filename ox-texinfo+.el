@@ -70,13 +70,21 @@
 ;;    manuals.  It makes some assumptions that might not be appropriate
 ;;    for your manuals, so you might have to define your own variant.
 
+;; This package also implements some minor kludges, which are enabled
+;; automatically and globally.
+;;
+;; -- Set `org-texinfo-info-process' to `("makeinfo --no-split %f")'
+;;    instead of the default `("makeinfo %f")'.
+;;
+;; -- Set `indent-tabs-mode' to nil in buffers used to edit a code
+;;    block if `indent-tabs-mode' is nil in the corresponding Org
+;;    buffer.
+
 ;;; Code:
 
 (eval-when-compile (require 'cl))
 (require 'dash)
 (require 'ox-texinfo)
-
-(setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
 ;;; Definition Items
 
@@ -273,6 +281,8 @@ so you might have to write your own version of this function."
     (save-buffer)))
 
 ;;; Minor Kludges
+
+(setq org-texinfo-info-process '("makeinfo --no-split %f"))
 
 (defun org-src-mode--maybe-disable-indent-tabs-mode ()
   (when (= org-src--tab-width 0)
