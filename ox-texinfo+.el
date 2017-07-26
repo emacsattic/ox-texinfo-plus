@@ -116,10 +116,8 @@
        (options (org-export-backend-options exporter)))
   (unless (assoc :texinfo-deffn options)
     (setf (org-export-backend-options exporter)
-          (append `((:texinfo-deffn "TEXINFO_DEFFN" nil nil t)
-                    (:texinfo-before-export-hook
-                     "TEXINFO_BEFORE_EXPORT_HOOK" nil nil t))
-                  options))))
+          (cons '(:texinfo-deffn "TEXINFO_DEFFN" nil nil t)
+                options))))
 
 (defun org-texinfo-headline--nonode (fn headline contents info)
   (let ((string (funcall fn headline contents info)))
@@ -158,7 +156,6 @@ holding contextual information."
     (funcall fn plain-list contents info)))
 (advice-add 'org-texinfo-plain-list :around
             'org-texinfo-plain-list--texinfo+)
-
 
 (defun org-texinfo-item--texinfo+ (fn item contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
