@@ -1,6 +1,6 @@
 ;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End
 
-;; Copyright (C) 2012-2015  Free Software Foundation, Inc.
+;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
 ;; Copyright (C) 2015-2017  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
@@ -25,73 +25,50 @@
 
 ;;; Commentary:
 
-;; This package patches the `texinfo' exporter defined in `ox-texinfo'
-;; to support `@deffn' and similar definition items.  To enable this
-;; add:
-;;
-;;   #+TEXINFO_DEFFN: t
-;;
-;; to your Org file.  Then you can create definition items by writing
-;; something that looks similar to how the corresponding items look in
-;; Info, for example:
-;;
-;;   - Command: magit-section-show
-;;   - Function: magit-git-exit-code &rest args
-;;   - Macro: magit-insert-section &rest args
-;;   - Variable: magit-display-buffer-noselect
-;;   - User Option: magit-display-buffer-function
-;;   - Key: q, magit-mode-bury-buffer
-;;
-;; This package was written to be used by Magit's manual.  You might
-;; want to check that out.
+;; This package provides some extensions to the `texinfo' exporter
+;; defined in `ox-texinfo'.
 
-;; Additionally this package works around `ox-texinfo's misguided
-;; handling of unnumbered vs. numbered sections.  You might have
-;; something like this in your Org file:
+;; 1. Create `@deffn' and similar definition items by writing list
+;;    items in Org that look similar to what they will look like in
+;;    Info.  To enable this, add:
 ;;
-;;   #+OPTIONS: H:4 num:3 toc:2
+;;      #+TEXINFO_DEFFN: t
 ;;
-;; This works as long as you have no level-4 sections.  If you do,
-;; then the use of `num:3' causes an error when exporting the `texi'
-;; file to `info'.  `num' cannot actually be used for its intended
-;; purpose with this exporter, because otherwise it produces invalid
-;; output.  So it is useless, but to add insult to injury, it also
-;; affects how links to sections look, i.e. it makes all links look
-;; like: "Also see [1.2.3]" instead of the much more useful: "Also
-;; see [Title of the section this links to].".
+;;    to your Org file.  After doing that, you can create definition
+;;    items like so:
+;;
+;;      - Command: magit-section-show
+;;
+;;        Show the body of the current section.
+;;
+;;      - Function: magit-git-exit-code &rest args
+;;      - Macro: magit-insert-section &rest args
+;;      - Variable: magit-display-buffer-noselect
+;;      - User Option: magit-display-buffer-function
+;;      - Key: q, magit-mode-bury-buffer
 
-;; To fix this this package defines the `TEXINFO_CLASS' `info+', which
-;; is like `info' but for levels one through three it always uses the
-;; numbered variant, even when `num' calls for the unnumbered variant:
+;; 2. Optionally share a section's node with some or all of its child
+;;    sections.  By default every section on every level gets its own
+;;    node, and `ox-texinfo' provides no mechanism for changing that.
+;;    To place a section in the smae node as its parent section, do
+;;    this:
 ;;
-;;   * level-1 => `@chapter'
-;;   ** level-2 => `@section'
-;;   *** level-3 => `@subsection'
-;;   **** level-4 => `@unnumberedsubsubsec'
-;;
-;; To enable to use this you need:
-;;
-;;   #+TEXINFO_CLASS: info+
+;;      **** Log Performance
+;;      :PROPERTIES:
+;;      :NONODE: t
+;;      :END:
 
-;; It's possible to force a level-4 section to get its own node
-;; by setting its `:texinfo-node' property to `t', for example:
+;; 3. Optionally modify the Org file before exporting it.  This is
+;;    implemented using a hook that can be set using the `BIND'
+;;    property:
 ;;
-;;   **** Risk of Reverting Automatically
-;;   :PROPERTIES:
-;;   :texinfo-node: t
-;;   :END:
-
-;; This package does not disable the effect `num' has on how links are
-;; formatted, you have to explicitly set `num' to `nil' if you want to
-;; use descriptive links, for example:
+;;      #+BIND: ox-texinfo+-before-export-hook some-function
+;;      #+BIND: ox-texinfo+-before-export-hook another-function
 ;;
-;;   #+OPTIONS: H:4 num:nil toc:2
-
-;; This package also implements a hook that is run before an export,
-;; and a function that can be added to that hook to update version
-;; strings.  This is implemented using the BIND Org keyword:
-;;
-;;   #+BIND: ox-texinfo+-before-export-hook ox-texinfo+-update-version-strings
+;;    The function `ox-texinfo+-update-version-strings' is provided as
+;;    an example.  It requires `magit' and is used for most of my own
+;;    manuals.  It makes some assumptions that might not be appropriate
+;;    for your manuals, so you might have to define your own variant.
 
 ;;; Code:
 
@@ -103,15 +80,6 @@
 
 ;;; Nodes and Sections
 
-(add-to-list
- 'org-texinfo-classes
- '("info+"
-   "@documentencoding AUTO\n@documentlanguage AUTO"
-   ("@chapter %s"       "@chapter %s"             "@appendix %s")
-   ("@section %s"       "@section %s"             "@appendixsec %s")
-   ("@subsection %s"    "@subsection %s"          "@appendixsubsec %s")
-   ("@subsubsection %s" "@unnumberedsubsubsec %s" "@appendixsubsubsec %s")))
-
 (let* ((exporter (org-export-get-backend 'texinfo))
        (options (org-export-backend-options exporter)))
   (unless (assoc :texinfo-deffn options)
@@ -121,9 +89,9 @@
 
 (defun org-texinfo-headline--nonode (fn headline contents info)
   (let ((string (funcall fn headline contents info)))
-    (if (and (not (equal (org-element-property :TEXINFO-NODE headline) "t"))
-             (> (org-element-property :level headline) 3))
+    (if (org-not-nil (org-export-get-node-property :NONODE headline t))
         (let ((n (string-match-p "\n" string)))
+          ;; Remove the "@node HEADING" line again.
           (substring string (1+ n)))
       string)))
 (advice-add 'org-texinfo-headline :around
@@ -138,13 +106,13 @@ holding contextual information."
                                           (make-hash-table :test #'eq))
                                :texinfo-entries-cache)))
          (cached-entries (gethash scope cache 'no-cache)))
-    (if (not (eq cached-entries 'no-cache)) cached-entries
+    (if (not (eq cached-entries 'no-cache))
+        cached-entries
       (puthash scope
                (cl-remove-if
                 (lambda (h)
-                  (if (> (org-element-property :level h) 3)
-                      (not (equal (org-element-property :TEXINFO-NODE h) "t"))
-                    (org-not-nil (org-export-get-node-property :COPYING h t))))
+                  (or (org-not-nil (org-export-get-node-property :NONODE  h t))
+                      (org-not-nil (org-export-get-node-property :COPYING h t))))
                 (org-export-collect-headlines info 1 scope))
                cache))))
 
