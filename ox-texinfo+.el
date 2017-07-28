@@ -70,12 +70,16 @@
 ;;    manuals.  It makes some assumptions that might not be appropriate
 ;;    for your manuals, so you might have to define your own variant.
 
-;; This package also implements some minor kludges, which are enabled
-;; automatically and globally.
+;; 4. Fully respect the local value of `indent-tabs-mode' from the Org
+;;    file when editing source blocks and exporting.  This affects all
+;;    source blocks and all exporters.
 ;;
-;; -- Set `indent-tabs-mode' to nil in buffers used to edit a code
-;;    block if `indent-tabs-mode' is nil in the corresponding Org
-;;    buffer.
+;;    I recommend you add this at the end of Org files to avoid
+;;    strange indentation, at least with the `texinfo' exporter:
+;;
+;;      # Local Variables:
+;;      # indent-tabs-mode: nil
+;;      # End:
 
 ;;; Code:
 
@@ -279,7 +283,20 @@ so you might have to write your own version of this function."
         (replace-match (format "%s (%s)." version gitdesc) t t nil 1)))
     (save-buffer)))
 
-;;; Minor Kludges
+;;; Untabify
+
+(defun org-export-to--disable-indent-tabs-mode
+    (fn backend file-or-buffer
+        &optional async subtreep visible-only body-only ext-plist post-process)
+  (let ((saved-indent-tabs-mode (default-value 'indent-tabs-mode)))
+    (setq-default indent-tabs-mode indent-tabs-mode)
+    (unwind-protect
+        (funcall fn backend file-or-buffer
+                 async subtreep visible-only body-only ext-plist post-process)
+      (setq-default indent-tabs-mode saved-indent-tabs-mode))))
+
+(advice-add 'org-export-to-file   :around 'org-export-to--disable-indent-tabs-mode)
+(advice-add 'org-export-to-buffer :around 'org-export-to--disable-indent-tabs-mode)
 
 (defun org-src-mode--maybe-disable-indent-tabs-mode ()
   (when (= org-src--tab-width 0)
