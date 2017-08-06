@@ -50,7 +50,7 @@
 ;; 2. Optionally share a section's node with some or all of its child
 ;;    sections.  By default every section on every level gets its own
 ;;    node, and `ox-texinfo' provides no mechanism for changing that.
-;;    To place a section in the smae node as its parent section, do
+;;    To place a section in the same node as its parent section, do
 ;;    this:
 ;;
 ;;      **** Log Performance
