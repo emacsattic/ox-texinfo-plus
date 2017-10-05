@@ -65,10 +65,10 @@
 ;;      #+BIND: ox-texinfo+-before-export-hook some-function
 ;;      #+BIND: ox-texinfo+-before-export-hook another-function
 ;;
-;;    The function `ox-texinfo+-update-version-strings' is provided as
-;;    an example.  It requires `magit' and is used for most of my own
-;;    manuals.  It makes some assumptions that might not be appropriate
-;;    for your manuals, so you might have to define your own variant.
+;;    The function `ox-texinfo+-update-version-strings' is provided
+;;    as an example.  It makes some assumptions that might not be
+;;    appropriate for your manuals, so you might have to define your
+;;    own variant.
 
 ;; 4. Fully respect the local value of `indent-tabs-mode' from the Org
 ;;    file when editing source blocks and exporting.  This affects all
@@ -262,17 +262,13 @@ holding contextual information."
 (advice-add 'org-texinfo-export-to-info    :before 'ox-texinfo+--before-export-hook)
 (advice-add 'org-texinfo-export-to-texinfo :before 'ox-texinfo+--before-export-hook)
 
-(declare-function magit-git-string 'magit-git)
-(declare-function magit-get-current-tag 'magit-git)
-
 (defun ox-texinfo+-update-version-strings ()
   "Update version strings in the current buffer.
 How the version strings are located and formatted is hard-coded,
 so you might have to write your own version of this function."
   (interactive)
-  (require (quote magit))
-  (let ((gitdesc (concat (magit-git-string "describe" "--tags") "+1"))
-        (version (magit-get-current-tag)))
+  (let ((gitdesc (concat (car (process-lines "git" "describe" "--tags")) "+1"))
+        (version (car (process-lines "git" "describe" "--tags" "--abbrev=0"))))
     (when (string-prefix-p "v" version)
       (setq version (substring version 1)))
     (save-excursion
