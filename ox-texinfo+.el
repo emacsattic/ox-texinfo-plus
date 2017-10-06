@@ -267,17 +267,36 @@ holding contextual information."
 How the version strings are located and formatted is hard-coded,
 so you might have to write your own version of this function."
   (interactive)
-  (let ((gitdesc (concat (car (process-lines "git" "describe" "--tags")) "+1"))
-        (version (car (process-lines "git" "describe" "--tags" "--abbrev=0"))))
-    (when (string-prefix-p "v" version)
-      (setq version (substring version 1)))
+  (let* ((release (and noninteractive (getenv "VERSION")))
+         (amend   (and noninteractive (getenv "AMEND")))
+         (rev     (if amend "HEAD~" "HEAD"))
+         (version
+          (or release
+              (car (process-lines "git" "describe" "--tags" "--abbrev=0" rev))))
+         (version
+          (if (string-prefix-p "v" version)
+              (substring version 1)
+            version))
+         (desc
+          (or release
+              (format "%s (%s+1)" version
+                      (car (process-lines "git" "describe" "--tags" rev))))))
+    (message "Setting version in %s to %s%s"
+             (file-name-nondirectory buffer-file-name) desc
+             (cond (amend   " [for amend]")
+                   (release " [for release]")
+                   (t       "")))
     (save-excursion
       (goto-char (point-min))
       (when (re-search-forward "^#\\+SUBTITLE: for version \\(.+\\)" nil t)
-        (replace-match (format "%s (%s)"  version gitdesc) t t nil 1))
+        (replace-match desc t t nil 1))
       (when (re-search-forward "^This manual is for [^ ]+ version \\(.+\\)" nil t)
-        (replace-match (format "%s (%s)." version gitdesc) t t nil 1)))
-    (save-buffer)))
+        (replace-match (concat desc ".") t t nil 1)))
+    (save-buffer)
+    (when noninteractive
+      (message "Generating %s.texi"
+               (file-name-sans-extension
+                (file-name-nondirectory buffer-file-name))))))
 
 ;;; Untabify
 
