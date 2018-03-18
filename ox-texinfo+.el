@@ -1,4 +1,4 @@
-;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End  -*- lexical-binding: t -*-
+;;; ox-texinfo+.el --- Extensions for Org's Texinfo exporter  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
 ;; Copyright (C) 2015-2018  Jonas Bernoulli
@@ -25,7 +25,7 @@
 
 ;;; Commentary:
 
-;; This package provides some extensions to the `texinfo' exporter
+;; This package provides some extensions for Org's `texinfo' exporter
 ;; defined in `ox-texinfo'.
 
 ;; 1. Create `@deffn' and similar definition items by writing list
