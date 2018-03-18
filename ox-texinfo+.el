@@ -1,7 +1,7 @@
-;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End
+;;; ox-texinfo+.el --- add @deffn support to the Texinfo Back-End  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
-;; Copyright (C) 2015-2017  Jonas Bernoulli
+;; Copyright (C) 2015-2018  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Package-Requires: ((org "9.1"))
@@ -148,7 +148,7 @@
            (`(table ,_) "@end table\n\n"))
     (org-texinfo+set-list-type this type)))
 
-(defun org-texinfo+plain-list (plain-list contents info)
+(defun org-texinfo+plain-list (plain-list contents _info)
   (concat contents (org-texinfo+maybe-end-list plain-list nil)))
 
 (defun org-texinfo+item (item contents info)
@@ -162,13 +162,7 @@
            (attr (org-export-read-attribute :attr_texinfo plain-list))
            (indic (or (plist-get attr :indic)
                       (plist-get info :texinfo-def-table-markup)))
-           (table-type (plist-get attr :table-type))
-           (type (org-element-property :type plain-list))
-           (list-type (cond
-                       ((eq type 'ordered) "enumerate")
-                       ((eq type 'unordered) "itemize")
-                       ((member table-type '("ftable" "vtable")) table-type)
-                       (t "table"))))
+           (type (org-element-property :type plain-list)))
       (concat (let ((str (org-texinfo+maybe-begin-list
                           item (if (equal type "table") 'table 'list))))
                 (if str
@@ -180,13 +174,13 @@
                 (and tag (concat " " (org-export-data tag info))))
               contents))))
 
-(defun org-texinfo+face-item (item contents info)
+(defun org-texinfo+face-item (item contents _info)
   (concat (org-texinfo+maybe-begin-list item 'table)
           (format "@item @w{ }--- Face: %s\n%s"
                   (match-string 2 contents)
                   (substring contents (match-end 0)))))
 
-(defun org-texinfo+key-item (item contents info)
+(defun org-texinfo+key-item (item contents _info)
   (concat (org-texinfo+maybe-begin-list item 'table)
           (let ((head (match-string 2 contents))
                 (body (substring contents (match-end 0))))
@@ -200,7 +194,7 @@
 %s" key cmd key cmd body))
               (error "Bad Key item %s" head)))))
 
-(defun org-texinfo+def-item (item contents info)
+(defun org-texinfo+def-item (item contents _info)
   (let ((type (match-string 1 contents))
         (head (match-string 2 contents))
         (body (substring contents (match-end 0)))
@@ -251,13 +245,16 @@ holding contextual information."
 
 ;;; Before Export Hook
 
+(defvar ox-texinfo+--before-export-hook nil)
+
 (defun ox-texinfo+--before-export-hook (&rest _ignored)
-  (let ((hook (cl-mapcan (pcase-lambda (`(,var ,val))
-                           (and (eq var 'ox-texinfo+-before-export-hook)
-                                (list val)))
-                         (let ((org-export-allow-bind-keywords t))
-                           (org-export--list-bound-variables)))))
-    (run-hooks 'hook)))
+  (let ((ox-texinfo+--before-export-hook
+         (cl-mapcan (pcase-lambda (`(,var ,val))
+                      (and (eq var 'ox-texinfo+-before-export-hook)
+                           (list val)))
+                    (let ((org-export-allow-bind-keywords t))
+                      (org-export--list-bound-variables)))))
+    (run-hooks 'ox-texinfo+--before-export-hook)))
 
 (advice-add 'org-texinfo-export-to-info    :before 'ox-texinfo+--before-export-hook)
 (advice-add 'org-texinfo-export-to-texinfo :before 'ox-texinfo+--before-export-hook)
