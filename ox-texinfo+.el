@@ -1,7 +1,7 @@
 ;;; ox-texinfo+.el --- Extensions for Org's Texinfo exporter  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
-;; Copyright (C) 2015-2018  Jonas Bernoulli
+;; Copyright (C) 2015-2019  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Package-Requires: ((org "9.1"))
@@ -258,6 +258,24 @@ holding contextual information."
 
 (advice-add 'org-texinfo-export-to-info    :before 'ox-texinfo+--before-export-hook)
 (advice-add 'org-texinfo-export-to-texinfo :before 'ox-texinfo+--before-export-hook)
+
+(defun ox-texinfo+-update-copyright-years ()
+  "Update copyright years in the current buffer.
+How the copyright years are located and formatted is hard-coded,
+so you might have to write your own version of this function."
+  (let ((year (format-time-string "%Y"))
+        (years "\\(\\([0-9]\\{4\\}\\)\\(?:-\\([0-9]\\{4\\}\\)\\)?\\)"))
+    (cl-flet ((bump (re)
+                    (goto-char (point-min))
+                    (while (re-search-forward (concat re years) nil t)
+                      (if (match-end 3)
+                          (replace-match year t t nil 3)
+                        (replace-match (concat (match-string 2) "-" year)
+                                       t t nil 1)))))
+      (save-excursion
+        (bump "^#\\+DATE: ")
+        (bump "^Copyright (C) "))))
+  (save-buffer))
 
 (defun ox-texinfo+-update-version-strings ()
   "Update version strings in the current buffer.
