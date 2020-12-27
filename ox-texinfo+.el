@@ -96,6 +96,7 @@
                 options))))
 
 (defun org-texinfo-plain-list--ox-texinfo+ (fn plain-list contents info)
+  "If TEXINFO_DEFFN is t, then maybe use a @deffn or similar item."
   (if (equal (plist-get info :texinfo-deffn) "t")
       (org-texinfo+-plain-list plain-list contents info)
     (funcall fn plain-list contents info)))
@@ -103,6 +104,7 @@
             'org-texinfo-plain-list--ox-texinfo+)
 
 (defun org-texinfo-item--ox-texinfo+ (fn item contents info)
+  "If TEXINFO_DEFFN is t, then maybe use a @deffn or similar item."
   (if (equal (plist-get info :texinfo-deffn) "t")
       (org-texinfo+-item item contents info)
     (funcall fn item contents info)))
@@ -215,6 +217,7 @@
 ;;; Shared Nodes
 
 (defun org-texinfo-headline--ox-texinfo+-nonode (fn headline contents info)
+  "If NONODE is non-nil, then this section shares the node with its parent."
   (let ((string (funcall fn headline contents info)))
     (if (org-not-nil (org-export-get-node-property :NONODE headline t))
         (let ((n (string-match-p "\n" string)))
@@ -248,6 +251,7 @@ holding contextual information."
 (defvar ox-texinfo+--before-export-hook nil)
 
 (defun ox-texinfo+--before-export-hook (&rest _ignored)
+  "Run the hook `ox-texinfo+--before-export-hook'."
   (let ((ox-texinfo+--before-export-hook
          (cl-mapcan (pcase-lambda (`(,var ,val))
                       (and (eq var 'ox-texinfo+-before-export-hook)
@@ -318,6 +322,7 @@ so you might have to write your own version of this function."
 (defun org-export-to--ox-texinfo+-disable-indent-tabs-mode
     (fn backend file-or-buffer
         &optional async subtreep visible-only body-only ext-plist post-process)
+  "Fix handling of `indent-tabs-mode'."
   (let ((saved-indent-tabs-mode (default-value 'indent-tabs-mode)))
     (setq-default indent-tabs-mode indent-tabs-mode)
     (unwind-protect
@@ -331,6 +336,7 @@ so you might have to write your own version of this function."
             'org-export-to--ox-texinfo+-disable-indent-tabs-mode)
 
 (defun org-src-mode--ox-texinfo+-maybe-disable-indent-tabs-mode ()
+  "Fix handling of `indent-tabs-mode'."
   (when (= org-src--tab-width 0)
     (setq indent-tabs-mode nil)))
 
