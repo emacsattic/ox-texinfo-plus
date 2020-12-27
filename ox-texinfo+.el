@@ -97,19 +97,19 @@
 
 (defun org-texinfo-plain-list--texinfo+ (fn plain-list contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
-      (org-texinfo+plain-list plain-list contents info)
+      (org-texinfo+-plain-list plain-list contents info)
     (funcall fn plain-list contents info)))
 (advice-add 'org-texinfo-plain-list :around
             'org-texinfo-plain-list--texinfo+)
 
 (defun org-texinfo-item--texinfo+ (fn item contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
-      (org-texinfo+item item contents info)
+      (org-texinfo+-item item contents info)
     (funcall fn item contents info)))
 (advice-add 'org-texinfo-item :around
             'org-texinfo-item--texinfo+)
 
-(defconst org-texinfo+item-regexp
+(defconst org-texinfo+-item-regexp
   (format "\\`%s: \\(.*\\)\n"
           (regexp-opt '("deffn"        ; CATEGORY NAME ARGUMENTS
                         "Command" ; deffn Command NAME ARGUMENTS
@@ -123,47 +123,47 @@
                         "Key"                   ; KEY COMMAND
                         ) t)))
 
-(defun org-texinfo+get-list-type (item)
+(defun org-texinfo+-get-list-type (item)
   (plist-get (cadr (plist-get (cadr item) :parent)) :previous-list-type))
 
-(defun org-texinfo+set-list-type (item value)
+(defun org-texinfo+-set-list-type (item value)
   (let ((parent (plist-get (cadr item) :parent)))
     (setf (cadr parent)
           (plist-put (cadr parent) :previous-list-type value))))
 
-(defun org-texinfo+maybe-begin-list (this type)
-  (prog1 (pcase (list (org-texinfo+get-list-type this) type)
+(defun org-texinfo+-maybe-begin-list (this type)
+  (prog1 (pcase (list (org-texinfo+-get-list-type this) type)
            (`(list               table) "@end itemize\n\n@table @asis\n")
            (`(,(or `nil `single) table) "@table @asis\n")
            (`(table               list) "@end table\n\n@itemize\n")
            (`(,(or `nil `single)  list) "@itemize\n"))
-    (org-texinfo+set-list-type this type)))
+    (org-texinfo+-set-list-type this type)))
 
-(defun org-texinfo+maybe-end-list (this type)
+(defun org-texinfo+-maybe-end-list (this type)
   (prog1 (pcase (list (if (eq (car this) 'item)
-                          (org-texinfo+get-list-type this)
+                          (org-texinfo+-get-list-type this)
                         (plist-get (cadr this) :previous-list-type))
                       type)
            (`(list  ,_) "@end itemize\n\n")
            (`(table ,_) "@end table\n\n"))
-    (org-texinfo+set-list-type this type)))
+    (org-texinfo+-set-list-type this type)))
 
-(defun org-texinfo+plain-list (plain-list contents _info)
-  (concat contents (org-texinfo+maybe-end-list plain-list nil)))
+(defun org-texinfo+-plain-list (plain-list contents _info)
+  (concat contents (org-texinfo+-maybe-end-list plain-list nil)))
 
-(defun org-texinfo+item (item contents info)
+(defun org-texinfo+-item (item contents info)
   (if (let ((case-fold-search nil))
-        (string-match org-texinfo+item-regexp contents))
+        (string-match org-texinfo+-item-regexp contents))
       (pcase (match-string 1 contents)
-        ("Face" (org-texinfo+face-item item contents info))
-        ("Key"  (org-texinfo+key-item  item contents info))
-        (_      (org-texinfo+def-item  item contents info)))
+        ("Face" (org-texinfo+-face-item item contents info))
+        ("Key"  (org-texinfo+-key-item  item contents info))
+        (_      (org-texinfo+-def-item  item contents info)))
     (let* ((plain-list (plist-get (cadr item) :parent))
            (attr (org-export-read-attribute :attr_texinfo plain-list))
            (indic (or (plist-get attr :indic)
                       (plist-get info :texinfo-def-table-markup)))
            (type (org-element-property :type plain-list)))
-      (concat (let ((str (org-texinfo+maybe-begin-list
+      (concat (let ((str (org-texinfo+-maybe-begin-list
                           item (if (equal type "table") 'table 'list))))
                 (if str
                     (concat str (and (eq type 'descriptive)
@@ -174,14 +174,14 @@
                 (and tag (concat " " (org-export-data tag info))))
               contents))))
 
-(defun org-texinfo+face-item (item contents _info)
-  (concat (org-texinfo+maybe-begin-list item 'table)
+(defun org-texinfo+-face-item (item contents _info)
+  (concat (org-texinfo+-maybe-begin-list item 'table)
           (format "@item @w{ }--- Face: %s\n%s"
                   (match-string 2 contents)
                   (substring contents (match-end 0)))))
 
-(defun org-texinfo+key-item (item contents _info)
-  (concat (org-texinfo+maybe-begin-list item 'table)
+(defun org-texinfo+-key-item (item contents _info)
+  (concat (org-texinfo+-maybe-begin-list item 'table)
           (let ((head (match-string 2 contents))
                 (body (substring contents (match-end 0))))
             (if (string-match ", " head)
@@ -194,7 +194,7 @@
 %s" key cmd key cmd body))
               (error "Bad Key item %s" head)))))
 
-(defun org-texinfo+def-item (item contents _info)
+(defun org-texinfo+-def-item (item contents _info)
   (let ((type (match-string 1 contents))
         (head (match-string 2 contents))
         (body (substring contents (match-end 0)))
@@ -209,7 +209,7 @@
       ("Variable"    (setq type "defvar"))
       ("User Option" (setq type "defopt")))
     (format "%s%s@%s %s\n%s@end %s\n\n"
-            (or (org-texinfo+maybe-end-list item 'single) "")
+            (or (org-texinfo+-maybe-end-list item 'single) "")
             prefix type head body type)))
 
 ;;; Shared Nodes
