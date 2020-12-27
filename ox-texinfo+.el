@@ -95,19 +95,19 @@
           (cons '(:texinfo-deffn "TEXINFO_DEFFN" nil nil t)
                 options))))
 
-(defun org-texinfo-plain-list--texinfo+ (fn plain-list contents info)
+(defun org-texinfo-plain-list--ox-texinfo+ (fn plain-list contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
       (org-texinfo+-plain-list plain-list contents info)
     (funcall fn plain-list contents info)))
 (advice-add 'org-texinfo-plain-list :around
-            'org-texinfo-plain-list--texinfo+)
+            'org-texinfo-plain-list--ox-texinfo+)
 
-(defun org-texinfo-item--texinfo+ (fn item contents info)
+(defun org-texinfo-item--ox-texinfo+ (fn item contents info)
   (if (equal (plist-get info :texinfo-deffn) "t")
       (org-texinfo+-item item contents info)
     (funcall fn item contents info)))
 (advice-add 'org-texinfo-item :around
-            'org-texinfo-item--texinfo+)
+            'org-texinfo-item--ox-texinfo+)
 
 (defconst org-texinfo+-item-regexp
   (format "\\`%s: \\(.*\\)\n"
@@ -214,7 +214,7 @@
 
 ;;; Shared Nodes
 
-(defun org-texinfo-headline--nonode (fn headline contents info)
+(defun org-texinfo-headline--ox-texinfo+-nonode (fn headline contents info)
   (let ((string (funcall fn headline contents info)))
     (if (org-not-nil (org-export-get-node-property :NONODE headline t))
         (let ((n (string-match-p "\n" string)))
@@ -222,7 +222,7 @@
           (substring string (1+ n)))
       string)))
 (advice-add 'org-texinfo-headline :around
-            'org-texinfo-headline--nonode)
+            'org-texinfo-headline--ox-texinfo+-nonode)
 
 (defun org-texinfo--menu-entries (scope info)
   "List direct children in SCOPE needing a menu entry.
@@ -315,7 +315,7 @@ so you might have to write your own version of this function."
 
 ;;; Untabify
 
-(defun org-export-to--disable-indent-tabs-mode
+(defun org-export-to--ox-texinfo+-disable-indent-tabs-mode
     (fn backend file-or-buffer
         &optional async subtreep visible-only body-only ext-plist post-process)
   (let ((saved-indent-tabs-mode (default-value 'indent-tabs-mode)))
@@ -325,14 +325,17 @@ so you might have to write your own version of this function."
                  async subtreep visible-only body-only ext-plist post-process)
       (setq-default indent-tabs-mode saved-indent-tabs-mode))))
 
-(advice-add 'org-export-to-file   :around 'org-export-to--disable-indent-tabs-mode)
-(advice-add 'org-export-to-buffer :around 'org-export-to--disable-indent-tabs-mode)
+(advice-add 'org-export-to-file :around
+            'org-export-to--ox-texinfo+-disable-indent-tabs-mode)
+(advice-add 'org-export-to-buffer :around
+            'org-export-to--ox-texinfo+-disable-indent-tabs-mode)
 
-(defun org-src-mode--maybe-disable-indent-tabs-mode ()
+(defun org-src-mode--ox-texinfo+-maybe-disable-indent-tabs-mode ()
   (when (= org-src--tab-width 0)
     (setq indent-tabs-mode nil)))
 
-(add-hook 'org-src-mode-hook 'org-src-mode--maybe-disable-indent-tabs-mode)
+(add-hook 'org-src-mode-hook
+          'org-src-mode--ox-texinfo+-maybe-disable-indent-tabs-mode)
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
