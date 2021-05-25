@@ -1,10 +1,10 @@
 ;;; ox-texinfo+.el --- Extensions for Org's Texinfo exporter  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
-;; Copyright (C) 2015-2020  Jonas Bernoulli
+;; Copyright (C) 2015-2021  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
-;; Package-Requires: ((org "9.3"))
+;; Package-Requires: ((org "9.4"))
 ;; Homepage: https://github.com/tarsius/ox-texinfo-plus
 ;; Keywords: outlines, hypermedia, calendar, wp
 
