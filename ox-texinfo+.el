@@ -236,15 +236,17 @@ holding contextual information."
                                           (make-hash-table :test #'eq))
                                :texinfo-entries-cache)))
          (cached-entries (gethash scope cache 'no-cache)))
-    (if (not (eq cached-entries 'no-cache))
-        cached-entries
-      (puthash scope
-               (cl-remove-if
-                (lambda (h)
-                  (or (org-not-nil (org-export-get-node-property :NONODE  h t))
-                      (org-not-nil (org-export-get-node-property :COPYING h t))))
-                (org-export-collect-headlines info 1 scope))
-               cache))))
+    (if (not (eq cached-entries 'no-cache)) cached-entries
+      (let* ((sections (org-texinfo--sectioning-structure info))
+             (max-depth (length sections)))
+        (puthash scope
+                 (cl-remove-if
+                  (lambda (h)
+                    (or (org-not-nil (org-export-get-node-property :NONODE  h t))
+                        (org-not-nil (org-export-get-node-property :COPYING h t))
+                        (< max-depth (org-export-get-relative-level h info))))
+                  (org-export-collect-headlines info 1 scope))
+                 cache)))))
 
 ;;; Before Export Hook
 
