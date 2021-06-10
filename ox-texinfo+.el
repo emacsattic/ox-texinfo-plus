@@ -47,18 +47,7 @@
 ;;      - User Option: magit-display-buffer-function
 ;;      - Key: q, magit-mode-bury-buffer
 
-;; 2. Optionally share a section's node with some or all of its child
-;;    sections.  By default every section on every level gets its own
-;;    node, and `ox-texinfo' provides no mechanism for changing that.
-;;    To place a section in the same node as its parent section, do
-;;    this:
-;;
-;;      **** Log Performance
-;;      :PROPERTIES:
-;;      :NONODE: t
-;;      :END:
-
-;; 3. Optionally modify the Org file before exporting it.  This is
+;; 2. Optionally modify the Org file before exporting it.  This is
 ;;    implemented using a hook that can be set using the `BIND'
 ;;    property:
 ;;
@@ -70,7 +59,7 @@
 ;;    appropriate for your manuals, so you might have to define your
 ;;    own variant.
 
-;; 4. Fully respect the local value of `indent-tabs-mode' from the Org
+;; 3. Fully respect the local value of `indent-tabs-mode' from the Org
 ;;    file when editing source blocks and exporting.  This affects all
 ;;    source blocks and all exporters.
 ;;
@@ -213,40 +202,6 @@
     (format "%s%s@%s %s\n%s@end %s\n\n"
             (or (org-texinfo+-maybe-end-list item 'single) "")
             prefix type head body type)))
-
-;;; Shared Nodes
-
-(defun org-texinfo-headline--ox-texinfo+-nonode (fn headline contents info)
-  "If NONODE is non-nil, then this section shares the node with its parent."
-  (let ((string (funcall fn headline contents info)))
-    (if (org-not-nil (org-export-get-node-property :NONODE headline t))
-        (let ((n (string-match-p "\n" string)))
-          ;; Remove the "@node HEADING" line again.
-          (substring string (1+ n)))
-      string)))
-(advice-add 'org-texinfo-headline :around
-            'org-texinfo-headline--ox-texinfo+-nonode)
-
-(defun org-texinfo--menu-entries (scope info)
-  "List direct children in SCOPE needing a menu entry.
-SCOPE is a headline or a full parse tree.  INFO is a plist
-holding contextual information."
-  (let* ((cache (or (plist-get info :texinfo-entries-cache)
-                    (plist-get (plist-put info :texinfo-entries-cache
-                                          (make-hash-table :test #'eq))
-                               :texinfo-entries-cache)))
-         (cached-entries (gethash scope cache 'no-cache)))
-    (if (not (eq cached-entries 'no-cache)) cached-entries
-      (let* ((sections (org-texinfo--sectioning-structure info))
-             (max-depth (length sections)))
-        (puthash scope
-                 (cl-remove-if
-                  (lambda (h)
-                    (or (org-not-nil (org-export-get-node-property :NONODE  h t))
-                        (org-not-nil (org-export-get-node-property :COPYING h t))
-                        (< max-depth (org-export-get-relative-level h info))))
-                  (org-export-collect-headlines info 1 scope))
-                 cache)))))
 
 ;;; Before Export Hook
 
