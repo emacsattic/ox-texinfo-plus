@@ -243,25 +243,7 @@ so you might have to write your own version of this function."
 How the version strings are located and formatted is hard-coded,
 so you might have to write your own version of this function."
   (interactive)
-  (let* ((release (and noninteractive (getenv "VERSION")))
-         (amend   (and noninteractive (getenv "AMEND")))
-         (rev     (if amend "HEAD~" "HEAD"))
-         (version
-          (or release
-              (ox-texinfo+--describe-revision rev "--abbrev=0")))
-         (version
-          (if (string-prefix-p "v" version)
-              (substring version 1)
-            version))
-         (desc
-          (or release
-              (format "%s (%s+1)" version
-                      (ox-texinfo+--describe-revision rev)))))
-    (message "Setting version in %s to %s%s"
-             (file-name-nondirectory buffer-file-name) desc
-             (cond (amend   " [for amend]")
-                   (release " [for release]")
-                   (t       "")))
+  (let ((desc (ox-texinfo+-get-version t)))
     (save-excursion
       (goto-char (point-min))
       (when (re-search-forward "^#\\+SUBTITLE: for version \\(.+\\)" nil t)
@@ -273,6 +255,29 @@ so you might have to write your own version of this function."
       (message "Generating %s.texi"
                (file-name-sans-extension
                 (file-name-nondirectory buffer-file-name))))))
+
+(defun ox-texinfo+-get-version (&optional verbose)
+  (let* ((release (and noninteractive (getenv "VERSION")))
+         (amend   (and noninteractive (getenv "AMEND")))
+         (rev     (if amend "HEAD~" "HEAD"))
+         (version
+          (or release
+              (ox-texinfo+--describe-revision rev "--abbrev=0")))
+         (version
+          (if (string-prefix-p "v" version)
+              (substring version 1)
+            version))
+         (version (or release
+                      (format "%s (%s+1)" version
+                              (ox-texinfo+--describe-revision rev)))))
+    (when verbose
+      (message "Setting version in %s to %s%s"
+               (file-name-nondirectory buffer-file-name)
+               version
+               (cond (release " [for release]")
+                     (amend   " [for amend]")
+                     (t       ""))))
+    version))
 
 (defun ox-texinfo+--describe-revision (rev &rest args)
   (with-temp-buffer
