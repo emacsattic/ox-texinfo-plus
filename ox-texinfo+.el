@@ -257,26 +257,26 @@ so you might have to write your own version of this function."
                 (file-name-nondirectory buffer-file-name))))))
 
 (defun ox-texinfo+-get-version (&optional verbose rev)
-  (let* ((release (and noninteractive (getenv "VERSION")))
+  (let* ((force   (and noninteractive (getenv "VERSION")))
          (amend   (and noninteractive (getenv "AMEND")))
          (rev     (or rev (if amend "HEAD~" "HEAD")))
          (version
-          (or release
+          (or force
               (ox-texinfo+--describe-revision rev "--abbrev=0")))
          (version
           (if (string-prefix-p "v" version)
               (substring version 1)
             version))
-         (version (or release
+         (version (or force
                       (format "%s (%s+1)" version
                               (ox-texinfo+--describe-revision rev)))))
     (when verbose
       (message "Setting version in %s to %s%s"
                (file-name-nondirectory buffer-file-name)
                version
-               (cond (release " [for release]")
-                     (amend   " [for amend]")
-                     (t       ""))))
+               (cond (force " [for release]")
+                     (amend " [for amend]")
+                     (t     ""))))
     version))
 
 (defun ox-texinfo+--describe-revision (rev &rest args)
