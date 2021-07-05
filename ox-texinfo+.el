@@ -256,10 +256,10 @@ so you might have to write your own version of this function."
                (file-name-sans-extension
                 (file-name-nondirectory buffer-file-name))))))
 
-(defun ox-texinfo+-get-version (&optional verbose)
+(defun ox-texinfo+-get-version (&optional verbose rev)
   (let* ((release (and noninteractive (getenv "VERSION")))
          (amend   (and noninteractive (getenv "AMEND")))
-         (rev     (if amend "HEAD~" "HEAD"))
+         (rev     (or rev (if amend "HEAD~" "HEAD")))
          (version
           (or release
               (ox-texinfo+--describe-revision rev "--abbrev=0")))
