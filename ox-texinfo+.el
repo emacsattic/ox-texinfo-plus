@@ -243,7 +243,7 @@ so you might have to write your own version of this function."
 How the version strings are located and formatted is hard-coded,
 so you might have to write your own version of this function."
   (interactive)
-  (let ((desc (ox-texinfo+-get-version t)))
+  (let ((desc (ox-texinfo+-get-version 'mixed nil t)))
     (save-excursion
       (goto-char (point-min))
       (when (re-search-forward "^#\\+SUBTITLE: for version \\(.+\\)" nil t)
@@ -256,20 +256,38 @@ so you might have to write your own version of this function."
                (file-name-sans-extension
                 (file-name-nondirectory buffer-file-name))))))
 
-(defun ox-texinfo+-get-version (&optional verbose rev)
+(defun ox-texinfo+-get-version (&optional style no-trim verbose rev)
   (let* ((force   (and noninteractive (getenv "VERSION")))
          (amend   (and noninteractive (getenv "AMEND")))
          (rev     (or rev (if amend "HEAD~" "HEAD")))
+         (exact   (ox-texinfo+--describe-revision rev "--exact-match"))
+         (tag     (ox-texinfo+--describe-revision rev "--abbrev=0"))
+         (raw     (ox-texinfo+--describe-revision rev))
+         (always  (ox-texinfo+--describe-revision rev "--always"))
          (version
           (or force
-              (ox-texinfo+--describe-revision rev "--abbrev=0")))
+              exact
+              (and tag
+                   (pcase style
+                     ((or 'raw 'nil) (concat raw "+1"))
+                     ('tag tag)
+                     ((or 'count (pred stringp))
+                      (format "%s%s%s" tag
+                              (if (stringp style) style "+")
+                              (if (string-match "-\\([0-9]+\\)" raw)
+                                  (1+ (string-to-number (match-string 1 raw)))
+                                1)))
+                     ('mixed (format "%s (%s+1)" tag raw))
+                     (_ (error "Unknown ox-texinfo+-get-version style: %s"
+                               style))))))
          (version
-          (if (string-prefix-p "v" version)
-              (substring version 1)
-            version))
-         (version (or force
-                      (format "%s (%s+1)" version
-                              (ox-texinfo+--describe-revision rev)))))
+          (cond (version
+                 (if (and (not no-trim)
+                          (string-match "\\`[^0-9]+" version))
+                     (substring version (match-end 0))
+                   version))
+                (always)
+                (t (error "No such revision: %s" rev)))))
     (when verbose
       (message "Setting version in %s to %s%s"
                (file-name-nondirectory buffer-file-name)
