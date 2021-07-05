@@ -248,7 +248,7 @@ so you might have to write your own version of this function."
          (rev     (if amend "HEAD~" "HEAD"))
          (version
           (or release
-              (car (process-lines "git" "describe" "--tags" "--abbrev=0" rev))))
+              (ox-texinfo+--describe-revision rev "--abbrev=0")))
          (version
           (if (string-prefix-p "v" version)
               (substring version 1)
@@ -256,7 +256,7 @@ so you might have to write your own version of this function."
          (desc
           (or release
               (format "%s (%s+1)" version
-                      (car (process-lines "git" "describe" "--tags" rev))))))
+                      (ox-texinfo+--describe-revision rev)))))
     (message "Setting version in %s to %s%s"
              (file-name-nondirectory buffer-file-name) desc
              (cond (amend   " [for amend]")
@@ -273,6 +273,15 @@ so you might have to write your own version of this function."
       (message "Generating %s.texi"
                (file-name-sans-extension
                 (file-name-nondirectory buffer-file-name))))))
+
+(defun ox-texinfo+--describe-revision (rev &rest args)
+  (with-temp-buffer
+    (and (zerop (apply #'call-process "git" nil (current-buffer) nil
+                       "describe" "--tags" (append args (list rev))))
+         (progn (goto-char (point-min))
+                (buffer-substring-no-properties
+                 (line-beginning-position)
+                 (line-end-position))))))
 
 ;;; Untabify
 
