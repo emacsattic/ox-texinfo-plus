@@ -70,6 +70,25 @@
 ;;      # indent-tabs-mode: nil
 ;;      # End:
 
+;; 4. Optionally dissolve certain headlines tilted "_" when using the
+;;    `texinfo' exporter.  This is useful when you want a headline's
+;;    section to be collapsed when `org-cycle' reaches the CONTENTS
+;;    state, just like the sections of sub-headlines are collapsed in
+;;    that state, while in the export you do not want that sub-heading,
+;;    which would be redundant outside of Org where similar visibility
+;;    folding is not available.
+;;
+;;    If the first child of a headline is a sub-headline titled "_",
+;;    then the sub-headline is removed and its section is used as the
+;;    section of the parent headline.
+;;
+;;    I recommend that you enable this in individual Org files:
+;;
+;;      # Local Variables:
+;;      # eval: (require 'ox-texinfo+ nil t)
+;;      # org-texinfo+-dissolve-noexport-headlines: t
+;;      # End:
+
 ;;; Code:
 
 (require 'cl-lib)
@@ -331,6 +350,43 @@ so you might have to write your own version of this function."
 
 (add-hook 'org-src-mode-hook
           'org-src-mode--ox-texinfo+-maybe-disable-indent-tabs-mode)
+
+;;; Dissolvable Headlines
+
+(defvar-local org-texinfo+-dissolve-noexport-headlines nil
+  "Whether to dissolve certain headlines titled \"_\".")
+
+;;;###autoload (put 'org-texinfo+-dissolve-noexport-headlines
+;;;###autoload      'safe-local-variable #'booleanp)
+;;;###autoload (cl-pushnew '(require 'ox-texinfo+ nil t) safe-local-eval-forms)
+
+(cl-pushnew 'org-texinfo+--dissolve-noexport-headlines
+            org-export-filter-parse-tree-functions)
+
+(defun org-texinfo+--dissolve-noexport-headlines (tree backend info)
+  (when (and (eq backend 'texinfo) org-texinfo+-dissolve-noexport-headlines)
+    (org-element-map tree 'headline
+      (lambda (headline)
+        (let ((contents (org-element-contents headline)))
+          (when contents
+            (pcase-let ((`(,s ,h) (org-element-map contents '(section headline)
+                                    #'identity info)))
+              ;; `org-texinfo--normalize-headlines' runs before this
+              ;; function and adds an empty section `s', which we have
+              ;; to remove again or we get two identical menus at the
+              ;; beginning and end of the final exported section.
+              ;; Likewise after some `texinfo' mangling, if the outer
+              ;; headline has properties, then we get an emtpy
+              ;; section, which we have to remove.
+              (when (and (equal (org-element-type s) 'section)
+                         (or (not (org-element-property :begin s))
+                             (= (length (org-element-contents s)) 0))
+                         (equal (org-element-type h) 'headline)
+                         (equal (org-element-property :raw-value h) "_"))
+                (org-element-set-element h (car (org-element-contents h)))
+                (org-element-extract-element s))))))
+      info))
+  tree)
 
 ;;; ox-texinfo+.el ends soon
 (provide 'ox-texinfo+)
