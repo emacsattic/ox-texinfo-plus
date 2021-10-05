@@ -27,20 +27,7 @@ defined in `ox-texinfo`.
    - Key: q, magit-mode-bury-buffer
    ```
 
-2. Optionally share a section's node with some or all of its child
-   sections.  By default every section on every level gets its own
-   node, and `ox-texinfo` provides no mechanism for changing that.
-   To place a section in the same node as its parent section, do
-   this:
-
-   ```
-   **** Log Performance
-   :PROPERTIES:
-   :NONODE: t
-   :END:
-   ```
-  
-3. Optionally modify the Org file before exporting it.  This is
+2. Optionally modify the Org file before exporting it.  This is
    implemented using a hook that can be set using the `BIND`
    property:
 
@@ -54,7 +41,7 @@ defined in `ox-texinfo`.
    appropriate for your manuals, so you might have to define your
    own variant.
 
-4. Fully respect the local value of `indent-tabs-mode` from the Org
+3. Fully respect the local value of `indent-tabs-mode` from the Org
    file when editing source blocks and exporting.  This affects all
    source blocks and all exporters.
 
@@ -64,5 +51,26 @@ defined in `ox-texinfo`.
    ```
    # Local Variables:
    # indent-tabs-mode: nil
+   # End:
+   ```
+
+4. Optionally dissolve certain headlines tilted "_" when using the
+   `texinfo` exporter.  This is useful when you want a headline's
+   section to be collapsed when `org-cycle` reaches the CONTENTS
+   state, just like the sections of sub-headlines are collapsed in
+   that state, while in the export you do not want that sub-heading,
+   which would be redundant outside of Org where similar visibility
+   folding is not available.
+
+   If the first child of a headline is a sub-headline titled "_",
+   then the sub-headline is removed and its section is used as the
+   section of the parent headline.
+
+   I recommend that you enable this in individual Org files:
+
+   ```
+   # Local Variables:
+   # eval: (require 'ox-texinfo+ nil t)
+   # org-texinfo+-dissolve-noexport-headlines: t
    # End:
    ```
