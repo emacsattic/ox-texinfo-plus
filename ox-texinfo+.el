@@ -130,8 +130,8 @@
                         "defvar"  "Variable"    ; NAME
                         "defopt"  "User Option" ; NAME
                         "Face"                  ; NAME
-                        "Key"                   ; KEY COMMAND
-                        ) t)))
+                        "Key")                  ; KEY COMMAND
+                      t)))
 
 (defun org-texinfo+-get-list-type (item)
   (plist-get (cadr (plist-get (cadr item) :parent)) :previous-list-type))
