@@ -1,7 +1,7 @@
-;;; ox-texinfo+.el --- Extensions for Org's Texinfo exporter  -*- lexical-binding: t -*-
+;;; ox-texinfo+.el --- [obsolete] Extensions for Org's Texinfo exporter  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2017  Free Software Foundation, Inc.
-;; Copyright (C) 2015-2021  Jonas Bernoulli
+;; Copyright (C) 2015-2022  Jonas Bernoulli
 
 ;; Author: Jonas Bernoulli <jonas@bernoul.li>
 ;; Package-Requires: ((org "9.4"))
@@ -24,6 +24,9 @@
 ;; see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; *****  This package is going to be obsolete soon.  *****
+;; *****  Please see README.md for more information.  *****
 
 ;; This package provides some extensions for Org's `texinfo' exporter
 ;; defined in `ox-texinfo'.

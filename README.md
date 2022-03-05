@@ -1,3 +1,31 @@
+This package is going to be obsolete soon
+=========================================
+
+If you create a new manual and are thinking about using `ox-texinfo+` in
+addition to `ox-texinfo`, then you should instead use the development version
+of Org.
+
+Org's `main` branch (which will be released as Org-9.6 eventually) contains
+an improved implementation of the main feature (1) of this package.  It works
+basically the same as described below, but you now have to use a "description
+list", which essentially means that the first line of all its items have to
+end with ` ::`.  For more information see the *Plain lists in Texinfo export*
+section in Org's info manual.
+
+I have also added support for automatic use the `@itemx` command where
+appropriate, which is described in the same section.
+
+The other features described below have not made it into the new, merged
+implementation.
+
+1. The merged feature.
+2. I now recommend using Org macros to add version strings and such.
+3. This does not appear to be necessary anymore; if it ever was.
+4. I would still like this behavior but think it should be implemented
+   by patching `org-cycle`.  I have heard rumors that that command is
+   being rewritten, so I will wait until that is done, before teaching
+   that function about my preferences.
+
 Extensions for Org's Texinfo exporter
 =====================================
 
